@@ -1,15 +1,18 @@
 // @dart=2.9
 import 'package:flutter/material.dart';
 import 'package:habits_tracker/data.dart';
+import 'package:habits_tracker/main.dart';
 
 import 'habits.dart';
 
 final TextEditingController nameController = TextEditingController();
 
 class CreatePage extends StatefulWidget {
-  final Habit habit;
-
-  CreatePage({this.habit, Key key});
+  bool isChange;
+  Habit habit;
+  bool isDescending;
+  Stream stream;
+  CreatePage({this.isDescending, this.isChange, this.habit,this.stream, Key key});
 
   @override
   State<CreatePage> createState() => _CreatePageState();
@@ -55,6 +58,198 @@ class _CreatePageState extends State<CreatePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isChange) {
+      widget.stream.listen((habit) => widget.habit = habit);
+      return modificationHabit();}
+    else {return newHabit();};
+  }
+
+  Widget modificationHabit(){
+    widget.habit = h2;
+    return Scaffold(
+        appBar: AppBar(
+
+          title: Text('Отредактировать'),
+        ),
+        body: SingleChildScrollView(
+          child: Form(
+            key: _formkey,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text('Название:', style: mainTextStyle),
+                    SizedBox(width: 20),
+                    SizedBox(
+                      width: 250,
+                      height: 80,
+                      child: TextFormField(
+                          initialValue: widget.habit.name,
+                          validator: (value) {
+                          if (value.isNotEmpty) {
+                            return null;
+                          } else {
+                            return 'обязательное поле';
+                          }
+                        },
+                        onChanged: (value) {
+                          widget.habit.name = value;
+                        },
+                        style: mainTextStyle,
+                        obscureText: false,
+                        autofocus: true,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text('Описание:', style: mainTextStyle),
+                    SizedBox(width: 20),
+                    SizedBox(
+                      width: 250,
+                      //height: 80,
+                      child: TextFormField(
+                        initialValue: widget.habit.description,
+                        style: mainTextStyle,
+                        onChanged: (value) {
+                          widget.habit.description = value;
+                        },
+                        obscureText: false,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(children: [
+                  Text('Приоритет:', style: mainTextStyle),
+                  SizedBox(
+                    width: 20,
+                  ),
+                  DropdownButton(
+                      value: widget.habit.priority,
+                      items: dropdownPriority,
+                      onChanged: (Priority newPrior) {
+                        setState(() {
+                          widget.habit.priority = newPrior;
+                        });
+                      }),
+                ]),
+                Row(children: [
+                  Text('Тип:', style: mainTextStyle),
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          Radio<bool>(
+                            value: widget.habit.isGood,
+                            groupValue: new_isGood,
+                            onChanged: (value) {
+                              setState(() {
+                                widget.habit.isGood = true;
+                                goodHabits.add(widget.habit);
+                                badHabits.remove(widget.habit);
+                              });
+                            },
+                            activeColor: Colors.green,
+                          ),
+                          Text('хорошая', style: mainTextStyle),
+                          Radio<bool>(
+                            value: !widget.habit.isGood,
+                            groupValue: new_isGood,
+                            onChanged: (value) {
+                              setState(() {
+                                widget.habit.isGood = false;
+                                goodHabits.remove(widget.habit);
+                                badHabits.add(widget.habit);
+                              });
+                            },
+                            activeColor: Colors.green,
+                          ),
+                          Text('плохая', style: mainTextStyle),
+                        ],
+                      ),
+                    ],
+                  ),
+                ]),
+                Row(
+                  children: [
+                    Text('Частота:', style: mainTextStyle),
+                    SizedBox(width: 20),
+                    SizedBox(
+                      width: 250,
+                      height: 80,
+                      child: TextFormField(
+                        initialValue: widget.habit.amount.toString(),
+                        validator: (value) {
+                          if (value.isEmpty) {
+                            return 'обязательное поле';
+                          }
+                          ;
+                          try {
+                            widget.habit.amount = int.parse(value);
+                          } catch (e) {
+                            widget.habit.amount = null;
+                            return 'введите число';
+                          }
+                          return null;
+                        },
+                        style: mainTextStyle,
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          widget.habit.amount = int.parse(value);
+                        },
+                        obscureText: false,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(children: [
+                  Text('Период:', style: mainTextStyle),
+                  SizedBox(
+                    width: 20,
+                  ),
+                  DropdownButton(
+                      value: widget.habit.period,
+                      items: dropdownPeriod,
+                      onChanged: (Period newPeriod) {
+                        setState(() {
+                          widget.habit.period = newPeriod;
+                        });
+                      }),
+                ]),
+                SizedBox(
+                  height: 40,
+                ),
+                TextButton(
+                  child: Text(
+                    "Сохранить",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 25.0,
+                    ),
+                  ),
+                  onPressed: () {
+                    if (!_formkey.currentState.validate()) {
+                      return;
+                    } else {
+                      streamControllerSort.add(widget.isDescending);
+                      Navigator.pushNamed(context, '/');
+                    }
+                  },
+                  style: ButtonStyle(
+                    backgroundColor:
+                    MaterialStateProperty.all<Color>(primaryColor),
+                    foregroundColor:
+                    MaterialStateProperty.all<Color>(Colors.white),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ));
+  }
+
+  Widget newHabit(){
     return Scaffold(
         appBar: AppBar(
 
@@ -79,7 +274,7 @@ class _CreatePageState extends State<CreatePage> {
                           } else {
                             return 'обязательное поле';
                           }
-                          },
+                        },
                         onChanged: (value) {
                           new_name = value;
                         },
@@ -100,7 +295,7 @@ class _CreatePageState extends State<CreatePage> {
                       child: TextField(
                         style: mainTextStyle,
                         onChanged: (value) {
-                          new_name = value;
+                          new_description = value;
                         },
                         obscureText: false,
                       ),
@@ -218,14 +413,15 @@ class _CreatePageState extends State<CreatePage> {
                           new_isGood, new_amount, new_period);
                       habits.add(nh);
                       new_isGood? goodHabits.add(nh) : badHabits.add(nh);
+                      streamControllerSort.add(widget.isDescending);
                       Navigator.pushNamed(context, '/');
                     }
                   },
                   style: ButtonStyle(
                     backgroundColor:
-                        MaterialStateProperty.all<Color>(primaryColor),
+                    MaterialStateProperty.all<Color>(primaryColor),
                     foregroundColor:
-                        MaterialStateProperty.all<Color>(Colors.white),
+                    MaterialStateProperty.all<Color>(Colors.white),
                   ),
                 )
               ],

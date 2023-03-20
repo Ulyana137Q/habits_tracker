@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:habits_tracker/create_habit.dart';
 import 'package:habits_tracker/data.dart';
 import 'package:habits_tracker/habits.dart';
+import 'dart:async';
+import 'filtr.dart';
+
+StreamController<bool> streamControllerSort = StreamController.broadcast();
+StreamController<Habit> streamControllerHabit = StreamController.broadcast();
 
 void main() {
   runApp(const MyApp());
@@ -23,15 +28,18 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       // home: MyStatefulWidget(),
       routes: {
-        '/': (BuildContext context) => MyHomePage(),
-        '/create': (BuildContext context) => CreatePage(),
+        '/': (BuildContext context) => MyHomePage(streamControllerSort.stream),
+        '/create': (BuildContext context) => CreatePage(isChange: false,),
+        '/change': (BuildContext context) => CreatePage(isChange: true,stream: streamControllerHabit.stream,)
       },
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key key}) : super(key: key);
+  MyHomePage(this.stream);
+  final Stream<bool> stream;
+  bool isDescending = false;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -39,7 +47,15 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
 
-  void refresh() => setState(() {});
+  @override
+  void initState(){
+    super.initState();
+    widget.stream.listen((sotType) => refresh(sotType));
+  }
+
+  void refresh(bool newSort) => setState(() {
+    widget.isDescending = newSort;
+  });
 
   int _selectedIndex = 0;
   static List<List<Habit>> habitsList = [
@@ -48,11 +64,12 @@ class _MyHomePageState extends State<MyHomePage> {
     badHabits,
   ];
 
-  void _onItemTapped(int index) {
+  void _onTypeTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -60,38 +77,47 @@ class _MyHomePageState extends State<MyHomePage> {
         .of(context)
         .size
         .width;
+    // final List<Habit> habitsList = habits.where((habit) {
+    //     if (_selectedIndex == 1){habit.isGood;}
+    //     else if (_selectedIndex == 2) {!habit.isGood;}
+    //     else {habit.isGood || !habit.isGood;}}).toList();
+    //
     return Scaffold(
       appBar: AppBar(
         title: Text(''),
         actions: <Widget>[
           IconButton(onPressed: () {
-            showSearch(context: context, delegate: HabitsSearch());
+            showSearch(context: context, delegate: HabitsSearch(widget.isDescending));
           }, icon: Icon(Icons.search)),
+          IconButton(onPressed: () {
+            streamControllerSort.add(!widget.isDescending);
+            (widget.isDescending) ? habits.sort((a, b) => a.dateOfCreate.compareTo(b.dateOfCreate)): habits.sort((a, b) => b.dateOfCreate.compareTo(a.dateOfCreate));
+          }, icon: Icon(Icons.sort)),
         ],
       ),
       body: SingleChildScrollView(
         child: Center(
-          //child: Expanded(
-          child: ListView(
-            scrollDirection: Axis.vertical,
-            shrinkWrap: true,
-            padding: const EdgeInsets.all(0.0),
-            children: habitsList[_selectedIndex]
-                .map((habit) =>
-                Padding(
-                  padding: const EdgeInsets.only(
-                    top: 0.0,
-                    bottom: 5.0,
-                    left: 5.0,
-                    right: 3.0,
-                  ),
-                  child: GestureDetector(child: habitsWidget(habit)),
-                ))
-                .toList(),
+            child: ListView(
+              scrollDirection: Axis.vertical,
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(0.0),
+              children: habitsList[_selectedIndex]
+                  .map((habit) =>
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: 0.0,
+                      bottom: 5.0,
+                      left: 5.0,
+                      right: 3.0,
+                    ),
+                    child: GestureDetector(
+                        child: habit.habitsWidget(context, widget.isDescending),
+                        ), // добавить реакцию на нажатие
+                  ))
+                  .toList(),
           ),
         ),
       ),
-      // ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.pushNamed(context, '/create');
@@ -117,213 +143,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: primaryColor,
-        onTap: _onItemTapped,
+        onTap: _onTypeTapped,
       ),
     );
   }
 
-
-  Widget habitsWidget(Habit habit) {
-    return Container(
-        height: 80,
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 80,
-              color: habit.isGood ? (Colors.green) : (Colors.redAccent),
-              child: IconButton(
-                padding: const EdgeInsets.all(0.0),
-                icon: Icon(
-                  Icons.done,
-                  size: 25.0,
-                ),
-                color: Colors.white,
-                onPressed: () {
-                  habit.changeCount();
-                  refresh();
-                },
-              ),
-            ),
-            SizedBox(
-              width: 20,
-            ),
-            Container(
-              width: screenWidht - 60 - 100,
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Text(
-                    habit.name,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 25.0,
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Text(
-                    habit.makeKomm(),
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 18.0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 80,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${habit.count} / ${habit.amount}',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 30.0,
-                    ),
-                  ),
-                  Text(
-                    habit.period == Period.day
-                        ? ('day')
-                        : (habit.period == Period.week
-                        ? ('week')
-                        : (habit.period == Period.month
-                        ? ('month')
-                        : (habit.period == Period.year
-                        ? ('year')
-                        : ('error')))),
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 18.0,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          ],
-        ));
-  }
-}
-
-
-class HabitsSearch extends SearchDelegate<Habit> {
-
-  @override
-  List<Widget> buildActions(BuildContext context) {
-    return [IconButton(onPressed: () {query = '';}, icon: Icon(Icons.clear)),];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(onPressed: () {close(context, null);}, icon: Icon(Icons.arrow_back));
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    return null;
-  }
-
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    final List<Habit> thabits = query.isEmpty? habits : habits.where((habit) => habit.name.startsWith(query)).toList();
-    return ListView.builder(
-        itemCount: thabits.length,
-        itemBuilder: (context, index) {
-          final Habit thabit = thabits[index];
-          return habitsWidget(thabit);
-        });
-  }
-
-
-  Widget habitsWidget(Habit habit) {
-    return Container(
-        height: 80,
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 80,
-              color: habit.isGood ? (Colors.green) : (Colors.redAccent),
-              child: IconButton(
-                padding: const EdgeInsets.all(0.0),
-                icon: Icon(
-                  Icons.adjust,
-                  size: 25.0,
-                ),
-                color: Colors.white,
-                onPressed: () {
-                  habit.changeCount();
-                  //refresh();
-                },
-              ),
-            ),
-            SizedBox(
-              width: 20,
-            ),
-            Container(
-              width: screenWidht - 60 - 100,
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Text(
-                    habit.name,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 25.0,
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Text(
-                    habit.makeKomm(),
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 18.0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Container(
-            //   width: 80,
-            //   child: Column(
-            //     mainAxisAlignment: MainAxisAlignment.center,
-            //     children: [
-            //       Text(
-            //         '${habit.count} / ${habit.amount}',
-            //         style: const TextStyle(
-            //           color: Colors.black,
-            //           fontSize: 30.0,
-            //         ),
-            //       ),
-            //       Text(
-            //         habit.period == Period.day
-            //             ? ('day')
-            //             : (habit.period == Period.week
-            //             ? ('week')
-            //             : (habit.period == Period.month
-            //             ? ('month')
-            //             : (habit.period == Period.year
-            //             ? ('year')
-            //             : ('error')))),
-            //         style: const TextStyle(
-            //           color: Colors.black,
-            //           fontSize: 18.0,
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            // )
-          ],
-        ));
-  }
 }
