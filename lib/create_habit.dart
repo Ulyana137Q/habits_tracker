@@ -24,10 +24,10 @@ class _CreatePageState extends State<CreatePage> {
   final GlobalKey<FormState> _formkey = GlobalKey<FormState>();
   String new_name = '';
   String new_description = '';
-  Priority new_priority;
+  Priority new_priority = Priority.values.first;
   bool new_isGood = true;
   int new_amount = 0;
-  Period new_period;
+  Period new_period = Period.values.first;
 
   List<DropdownMenuItem<Priority>> get dropdownPriority {
     List<DropdownMenuItem<Priority>> menuItems = [
